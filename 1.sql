@@ -1,0 +1,72 @@
+-- Создаю схему
+CREATE SCHEMA `1` ;
+
+-- создаю таблицу
+CREATE TABLE `1`.`ACCOUNTS` (
+  `Client` TEXT NULL,
+  `ACC` INT NULL,
+  `CURRCODE` INT NULL,
+  `Balance` INT NULL);
+
+-- создаю таблицу
+CREATE TABLE `1`.`CURRENCY` (
+  `CURRENCY` INT NOT NULL AUTO_INCREMENT,
+  `EXCHANGE` TEXT NULL,
+  PRIMARY KEY (`CURRENCY`));
+
+-- создаю таблицу
+CREATE TABLE `1`.`EXCHANGE` (
+  `CURR_FROM` INT NULL,
+  `CURR_TO` INT NULL,
+  `COURSE` FLOAT NULL);
+
+------------------
+-- Данные для таблици ACCOUNTS (Client,ACC,CURRCODE,Balance)
+INSERT INTO `1`.ACCOUNTS VALUES('Иванов',000000001,1,50000);
+INSERT INTO `1`.ACCOUNTS VALUES('Петров',000000002,2,1000);
+INSERT INTO `1`.ACCOUNTS VALUES('Галкин',000000003,2,800);
+INSERT INTO `1`.ACCOUNTS VALUES('Киркоров',000000004,1,2000);
+INSERT INTO `1`.ACCOUNTS VALUES('Агутин',000000005,1,60000);
+
+-- Данные для таблици CURRENCY (CURRENCY,EXCHANGE)
+INSERT INTO `1`.CURRENCY VALUES(1, 'Рубль');
+INSERT INTO `1`.CURRENCY VALUES(2, 'Доллар');
+
+-- Данные для таблици EXCHANGE (CURR_FROM,CURR_TO,COURSE)
+INSERT INTO `1`.EXCHANGE VALUES(1, 2, 78.77);
+INSERT INTO `1`.EXCHANGE VALUES(2, 1, 0.013);
+------------------
+
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `perevod`(ACC_FROM INT, ACC_TO INT, AMOUNT INT)
+BEGIN
+    DECLARE ACC_FROM_DATA INT DEFAULT 0;
+    DECLARE ACC_TO_DATA INT DEFAULT 0;
+    DECLARE ACC_TO_Balance INT DEFAULT 0;
+    DECLARE ACC_FROM_Balance INT DEFAULT 0;
+    DECLARE COURSE_Balance FLOAT DEFAULT 0;
+    SET SQL_SAFE_UPDATES = 0;
+    SELECT `1`.ACCOUNTS.CURRCODE INTO ACC_FROM_DATA from `1`.ACCOUNTS Where `1`.ACCOUNTS.ACC = ACC_FROM;
+    SELECT `1`.ACCOUNTS.CURRCODE INTO ACC_TO_DATA from `1`.ACCOUNTS Where `1`.ACCOUNTS.ACC = ACC_TO;
+    SELECT `1`.ACCOUNTS.Balance INTO ACC_TO_Balance from `1`.ACCOUNTS Where `1`.ACCOUNTS.ACC = ACC_TO;
+	SELECT `1`.ACCOUNTS.Balance INTO ACC_FROM_Balance from `1`.ACCOUNTS Where `1`.ACCOUNTS.ACC = ACC_FROM;
+		IF ACC_FROM_DATA = ACC_TO_DATA THEN
+			if ACC_FROM_Balance >= AMOUNT THEN
+				update `1`.ACCOUNTS set Balance = (ACC_FROM_Balance - AMOUNT) where `1`.ACCOUNTS.ACC = ACC_FROM;
+				update `1`.ACCOUNTS set Balance = (ACC_TO_Balance + AMOUNT) where `1`.ACCOUNTS.ACC = ACC_TO;
+				select 'Успех';
+			ELSE
+				select 'Нет денег';
+			END IF;
+		ELSE
+			SELECT `1`.EXCHANGE.COURSE INTO COURSE_Balance from `1`.EXCHANGE Where `1`.EXCHANGE.CURR_FROM = ACC_FROM_DATA and  `1`.EXCHANGE.CURR_TO = ACC_TO_DATA;
+            select COURSE_Balance;
+			 if ACC_FROM_Balance >= (AMOUNT * COURSE_Balance) THEN
+				update `1`.ACCOUNTS set Balance = (ACC_FROM_Balance - (AMOUNT * COURSE_Balance)) where `1`.ACCOUNTS.ACC = ACC_FROM;
+				update `1`.ACCOUNTS set Balance = (ACC_TO_Balance + (AMOUNT * COURSE_Balance)) where `1`.ACCOUNTS.ACC = ACC_TO;
+				select 'Успех', (AMOUNT * COURSE_Balance),ACC_FROM_Balance;
+			ELSE
+				select 'Нет_денег';
+			END IF;
+		END IF;
+END
